@@ -11,7 +11,7 @@ export async function getData() {
     const res = await fetch(BASE_URL + '/latest', { headers: HEADERS })
     const json = await res.json()
     return json.record
-  } catch { return { viewingEnabled: true, suggestions: [] } }
+  } catch { return { viewingEnabled: true, suggestions: [], inlineNotes: [] } }
 }
 export async function setData(data) {
   try {
