@@ -70,11 +70,16 @@ body{font-family:'Inter',sans-serif;background:#d4c9b0}
 .inline-highlight:hover{background:#fde68a}
 
 /* Page navigation */
-.page-nav{display:flex;align-items:center;justify-content:center;gap:20px;padding:12px 24px;background:#2c2420;flex-shrink:0}
-.page-nav-btn{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;line-height:1}
+.page-nav{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#2c2420;flex-shrink:0}
+.page-nav-btn{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;line-height:1;flex-shrink:0}
 .page-nav-btn:hover:not(:disabled){background:rgba(255,255,255,.25)}
 .page-nav-btn:disabled{opacity:.3;cursor:default}
-.page-nav-label{font-family:'Lora',serif;font-style:italic;font-size:.82rem;color:rgba(255,255,255,.6);min-width:90px;text-align:center}
+.page-nav-center{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0}
+.page-nav-label{font-family:'Lora',serif;font-style:italic;font-size:.78rem;color:rgba(255,255,255,.6);text-align:center}
+.page-slider{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:rgba(255,255,255,.2);outline:none;cursor:pointer}
+.page-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:#b97a5a;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.page-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#b97a5a;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.page-slider::-webkit-slider-track{background:rgba(255,255,255,.2);border-radius:2px}
 
 /* Locked */
 .locked-state{text-align:center;padding:90px 20px}

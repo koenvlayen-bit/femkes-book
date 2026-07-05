@@ -481,7 +481,17 @@ export default function App() {
 
       <div className="page-nav">
         <button className="page-nav-btn" onClick={goPrev} disabled={currentPage === 0}>‹</button>
-        <span className="page-nav-label">{currentPage + 1} / {totalPages}</span>
+        <div className="page-nav-center">
+          <input
+            className="page-slider"
+            type="range"
+            min={0}
+            max={totalPages - 1}
+            value={currentPage}
+            onChange={e => { setCurrentPage(Number(e.target.value)); pageRef.current?.scrollTo(0, 0) }}
+          />
+          <span className="page-nav-label">{currentPage + 1} / {totalPages}</span>
+        </div>
         <button className="page-nav-btn" onClick={goNext} disabled={currentPage === totalPages - 1}>›</button>
       </div>
     </div>
