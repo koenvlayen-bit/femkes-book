@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import mammoth from 'mammoth'
 import { getData, setData } from './jsonbin.js'
 import BOOK_TEXT from './bookText.js'
 import './App.css'
@@ -78,19 +79,29 @@ function paginateBlocks(blocks) {
 
 function Block({ block, notes, onHighlightClick }) {
   const active = notes.filter(n => n.type === 'inline' && !n.resolved && n.quote)
+  function renderBold(text, keyPrefix) {
+    const parts = text.split(/(\*\*[^*]+\*\*)/)
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={keyPrefix + '-b' + i}>{part.slice(2, -2)}</strong>
+      }
+      return part
+    })
+  }
+
   function wrapText(content) {
     const matches = []
     active.forEach(note => { const idx = content.indexOf(note.quote); if (idx !== -1) matches.push({ idx, note }) })
-    if (!matches.length) return content
+    if (!matches.length) return renderBold(content, 'rb')
     matches.sort((a, b) => a.idx - b.idx)
     const parts = []; let cursor = 0
     matches.forEach(({ idx, note }) => {
       if (idx < cursor) return
-      if (idx > cursor) parts.push(content.slice(cursor, idx))
+      if (idx > cursor) parts.push(...renderBold(content.slice(cursor, idx), 'rb' + idx))
       parts.push(<span key={note.id} id={'h-' + note.id} className="inline-highlight" onClick={() => onHighlightClick(note.id)}>{note.quote}</span>)
       cursor = idx + note.quote.length
     })
-    if (cursor < content.length) parts.push(content.slice(cursor))
+    if (cursor < content.length) parts.push(...renderBold(content.slice(cursor), 'rbe'))
     return parts
   }
   switch (block.type) {
@@ -246,14 +257,37 @@ export default function App() {
     const file = e.target.files[0]; if (!file) return
     setUploadStatus('Lezen...')
     try {
-      const text = await file.text()
+      let text = ''
+      if (file.name.endsWith('.docx')) {
+        const arrayBuffer = await file.arrayBuffer()
+        const result = await mammoth.extractRawText({ arrayBuffer })
+        // Also get HTML to detect bold
+        const htmlResult = await mammoth.convertToHtml({ arrayBuffer })
+        const html = htmlResult.value
+        // Parse bold from HTML — replace <strong>...</strong> with **...**
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(html, 'text/html')
+        function nodeToText(node) {
+          if (node.nodeType === 3) return node.textContent
+          if (node.nodeType !== 1) return ''
+          const tag = node.tagName.toLowerCase()
+          const inner = Array.from(node.childNodes).map(nodeToText).join('')
+          if (tag === 'strong' || tag === 'b') return '**' + inner + '**'
+          if (tag === 'p') return inner + '\n'
+          if (tag === 'br') return '\n'
+          return inner
+        }
+        text = Array.from(doc.body.childNodes).map(nodeToText).join('').trim()
+      } else {
+        text = await file.text()
+      }
       const broken = notes.filter(n => n.type === 'inline' && n.quote && text.indexOf(n.quote) === -1)
       setBrokenNotes(broken)
       const ob = { content: text, name: file.name.replace(/\.(docx|txt)$/i, ''), date: new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }) }
       setOverrideBook(ob); setCurrentPage(0)
       const d = await getData(); await setData({ ...d, overrideBook: ob })
       setUploadStatus(broken.length > 0 ? `⚠ ${broken.length} opmerking(en) niet meer gevonden in de nieuwe tekst` : '✓ Geüpload op ' + ob.date)
-    } catch { setUploadStatus('Fout bij uploaden.') }
+    } catch (err) { console.error(err); setUploadStatus('Fout bij uploaden.') }
     e.target.value = ''
   }
 
