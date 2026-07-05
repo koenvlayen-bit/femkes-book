@@ -49,8 +49,10 @@ function parseBook(text) {
     if (t.startsWith('**') || t.startsWith('BREAKING')) {
       blocks.push({ type: 'breaking', text: t.replace(/\*\*/g, '') }); i++; continue
     }
-    if (t.match(/^(Proloog|Epiloog|Notities|\d+\.?)\.?\s*$/)) {
-      const raw = t.replace('.', '').trim()
+    // Match chapter headings — plain or bold (e.g. **11.**)
+    const chapterMatch = t.match(/^\*{0,2}(Proloog|Epiloog|Notities|\d+\.?)\*{0,2}\.?\s*$/)
+    if (chapterMatch) {
+      const raw = chapterMatch[1].replace('.', '').trim()
       const label = raw === 'Proloog' ? 'Proloog' : raw === 'Epiloog' ? 'Epiloog' : raw === 'Notities' ? 'Notities' : 'Hoofdstuk ' + raw
       let sub = ''; i++
       if (i < lines.length && lines[i].trim().match(/^\d+\s+\w+/)) { sub = lines[i].trim(); i++ }
