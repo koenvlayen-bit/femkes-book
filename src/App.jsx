@@ -200,9 +200,13 @@ export default function App() {
   const totalPages = pages.length
 
   useEffect(() => {
+    // Load overrideBook from localStorage (too large for JSONBin)
+    try {
+      const stored = localStorage.getItem('overrideBook')
+      if (stored) setOverrideBook(JSON.parse(stored))
+    } catch {}
     getData().then(d => {
       if (d.viewingEnabled !== undefined) setViewingEnabled(d.viewingEnabled)
-      if (d.overrideBook) setOverrideBook(d.overrideBook)
       if (d.userNotes && d.userNotes.length) {
         const ids = new Set(INITIAL_NOTES.map(n => n.id))
         setNotes([...INITIAL_NOTES, ...d.userNotes.filter(n => !ids.has(n.id))])
@@ -246,13 +250,20 @@ export default function App() {
       const ids = new Set(INITIAL_NOTES.map(n => n.id))
       const userNotes = newNotes.filter(n => !ids.has(n.id))
       const resolvedIds = newNotes.filter(n => n.resolved).map(n => n.id)
-      const d = await getData(); await setData({ ...d, userNotes, resolvedIds })
+      const d = await getData()
+      // Never send overrideBook to JSONBin — it's stored in localStorage
+      const { overrideBook: _ignored, ...rest } = d
+      await setData({ ...rest, userNotes, resolvedIds })
     } finally { setSaving(false) }
   }
 
   async function toggleViewing() {
     const next = !viewingEnabled; setViewingEnabled(next); setSaving(true)
-    try { const d = await getData(); await setData({ ...d, viewingEnabled: next }) } finally { setSaving(false) }
+    try {
+      const d = await getData()
+      const { overrideBook: _ignored, ...rest } = d
+      await setData({ ...rest, viewingEnabled: next })
+    } finally { setSaving(false) }
   }
 
   async function handleFileUpload(e) {
@@ -287,7 +298,8 @@ export default function App() {
       setBrokenNotes(broken)
       const ob = { content: text, name: file.name.replace(/\.(docx|txt)$/i, ''), date: new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }) }
       setOverrideBook(ob); setCurrentPage(0)
-      const d = await getData(); await setData({ ...d, overrideBook: ob })
+      // Store book in localStorage (JSONBin free tier can't handle ~142k chars)
+      try { localStorage.setItem('overrideBook', JSON.stringify(ob)) } catch {}
       setUploadStatus(broken.length > 0 ? `⚠ ${broken.length} opmerking(en) niet meer gevonden in de nieuwe tekst` : '✓ Geüpload op ' + ob.date)
     } catch (err) { console.error(err); setUploadStatus('Fout bij uploaden.') }
     e.target.value = ''
