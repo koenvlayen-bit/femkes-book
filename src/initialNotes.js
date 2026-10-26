@@ -168,7 +168,7 @@ const notes = [
     resolved: false,
     quote: '',
     pos: 999999,
-    text: 'SPELFOUT (2x): "antwoorde" → "antwoordde"\n\n1. H8: "Jarne was de groepsleider en antwoorde bijna altijd als eerste."\n2. H8: "Eleni antwoorde niet onmiddellijk."',
+    text: 'SPELFOUT (2x): "antwoorde" → "antwoordde"\n\n1. H5: "Jarne was de groepsleider en antwoorde bijna altijd als eerste."\n2. H5: "Eleni antwoorde niet onmiddellijk."',
     author: 'Koen',
     date: '26 oktober 2026',
   },
