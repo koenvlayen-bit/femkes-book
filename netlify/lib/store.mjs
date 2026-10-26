@@ -1,17 +1,23 @@
 import { getStore } from "@netlify/blobs";
 
 function store() {
-  return getStore("femkes-book");
+  return getStore({ name: "femkes-book", consistency: "strong" });
 }
 
 export async function readMain() {
-  const s = (await store().get("settings", { type: "json" })) || {};
-  return {
-    viewingEnabled: s.viewingEnabled !== undefined ? Boolean(s.viewingEnabled) : true,
-    updatedAt: s.updatedAt || null,
-    userNotes: s.userNotes || [],
-    resolvedIds: s.resolvedIds || [],
-  };
+  try {
+    const s = await store().get("settings", { type: "json" });
+    if (!s) return { viewingEnabled: true, updatedAt: null, userNotes: [], resolvedIds: [] };
+    return {
+      viewingEnabled: s.viewingEnabled !== undefined ? Boolean(s.viewingEnabled) : true,
+      updatedAt: s.updatedAt || null,
+      userNotes: Array.isArray(s.userNotes) ? s.userNotes : [],
+      resolvedIds: Array.isArray(s.resolvedIds) ? s.resolvedIds : [],
+    };
+  } catch (e) {
+    console.error("[store] readMain fout:", e.message);
+    return { viewingEnabled: true, updatedAt: null, userNotes: [], resolvedIds: [] };
+  }
 }
 
 export async function writeMain(data) {
@@ -21,7 +27,12 @@ export async function writeMain(data) {
 }
 
 export async function readText() {
-  return (await store().get("booktext", { type: "text" })) || null;
+  try {
+    return (await store().get("booktext", { type: "text" })) || null;
+  } catch (e) {
+    console.error("[store] readText fout:", e.message);
+    return null;
+  }
 }
 
 export async function saveText(text) {
