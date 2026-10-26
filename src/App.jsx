@@ -1,27 +1,29 @@
 import { useState, useEffect, useRef } from 'react'
 import mammoth from 'mammoth'
-import { getData, setData } from './jsonbin.js'
+import { fetchBook, saveBookText, saveNotes, setViewing, loadSession, saveSession, clearSession } from './api.js'
 import BOOK_TEXT from './bookText.js'
 import './App.css'
 
 const INITIAL_NOTES = [
-  { id: 1003, type: 'inline', resolved: false, quote: 'Vier jongeren wankelden over de strip', pos: 1178, text: 'PROLOOG — tempo: De opbouw werkt uitstekend, maar het stuk tussen de joint en het eerste geluid gaat iets te snel. Overweeg een extra alinea waarin de jongens tot rust komen, wat lachen en plezier maken, dan de stilte van de nacht laten terugkeren. Dat maakt de breuk (het gehijg) veel abrupter en dus angstaanjagender.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1010, type: 'inline', resolved: false, quote: 'Dit was het leven! Overdag luieren op de strandbedden van Star Beach', pos: 1759, text: 'Structuur: deze karakterisering van Jarne komt iets te vroeg, nog voor we de sfeer goed hebben. Overweeg dit blokje te verplaatsen naar nádat de joint aangestoken is. Dan voelt het als een dronken monoloog in zijn hoofd — het vervolg met de geur komt dan minder abrupt.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1004, type: 'inline', resolved: false, quote: 'Een overweldigend geloei van heel dichtbij', pos: 3555, text: 'Heel effectief. De opbouw van geluiden (gehijg → voetstappen → geloei) werkt uitstekend als spanningstechniek. Ik ben nog steeds fan van een MUUUH-geluid.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1005, type: 'inline', resolved: false, quote: 'Bel Mavrakis!', pos: 21066, text: 'Sterke cliffhanger om het hoofdstuk mee te eindigen. Zulke hoofdstukafsluiters mag je zeker vaker gebruiken, dat werkt sterk.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1011, type: 'inline', resolved: false, quote: 'Thomas Brend rekte zich loom uit en zocht met zijn arm naar Sophia.', pos: 5200, text: 'H1 — Thomas: laat zijn emotionele toestand (tranen, spiegel, het water) iets langer duren — dat is het sterkste stuk van het hoofdstuk. De eerste wanhoop al beter benadrukken. Misschien ook "gulzig" vervangen door "slokte een flesje water binnen" — dat klinkt beter bij het wanhopige moment.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1001, type: 'inline', resolved: false, quote: 'Het bleef oorverdovend stil.', pos: 5480, text: 'Misschien beter als gedachte tonen i.p.v. uitroep naar Sophia? Zoiets als: "Was Sophia in de badkamer? Hij riep haar zacht, maar het bleef oorverdovend stil. Vreemd, zelfs de cicades bleken vandaag geruisloos, alsof een onheilspellende dreiging hun tjirpende geluiden had verstomd."', author: 'Koen', date: '28 juni 2026' },
-  { id: 1012, type: 'inline', resolved: false, quote: 'De rit naar Iraklion duurde een korte 30 minuten.', pos: 13724, text: 'Opvulling: deze autorit met Nikos is een gemiste kans. Nu is het één alinea. Maar dit is het moment waarop Thomas voor het eerst echt begint te beseffen dat er iets ernstig mis is. Nikos zwijgt, rijdt gespannen, stelt hem niet gerust. Geef dit meer ruimte: de bochten, de muziek, Thomas die probeert te bellen, zijn gedachten die naar het donkerste gaan. Dit mag twee of drie alinea\'s worden.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1013, type: 'inline', resolved: false, quote: 'Niet veel later belde de ziedende man de politie.', pos: 16778, text: 'H2 — bij Alex: het stuk in de taverna is wat repetitief. De agenten twijfelen twee keer rond. Schrap de tweede twijfelronde en geef meer sfeer aan de taverna zelf: de geuren, Alex die moppert vanuit de hoek — het zoveelste groepje dronken toeristen. Vermijd ook 2x het woord "euh" in twee opeenvolgende zinnen.', author: 'Koen', date: '28 juni 2026' },
-  { id: 2001, type: 'inline', resolved: false, quote: 'Klokslag zeven uur gaf hij zijn drie geadopteerde katten eten.', pos: 22635, text: 'H3 — Geef gerust wat meer aandacht aan de typische (zwerf)katten in Griekenland, en pas de zin wat aan zodat hij vlotter leest: "De talrijke katten rond zijn autoverhuurbedrijf gaf hij eerst brokjes en vers water."', author: 'Koen', date: '29 juni 2026' },
-  { id: 1014, type: 'inline', resolved: false, quote: 'Zijn oog viel op een post in de', pos: 22254, text: 'H3 — Nikos: rustig ritme dat mooi contrasteert. Na het Breaking News ook meer de stilte benadrukken — zo\'n nieuws schokt het hele stadje. De Facebook-passages zijn te druk. Het herhalende "Alex" komt slordig over — niet elke zin hoeft met zijn naam te beginnen. Geef meer aandacht aan Alex als persoon vanuit Nikos\' standpunt, om de hechte gemeenschap in de verf te zetten.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1015, type: 'inline', resolved: false, quote: 'Slaap vond ze zwaar overroepen.', pos: 27871, text: 'H4 — perfecte openingszin. Maar het stuk bij Giorgos verdient meer uitwerking. Nu loopt Eleni erdoor in enkele zinnen. De relatie vader-dochter is een warm moment — gun de lezer wat ademruimte. Een blik, een gebaar, een halve zin die ze niet afmaken. Dat hoeft niet lang, maar het mag iets meer zijn.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1016, type: 'inline', resolved: false, quote: 'Daarna ging ze over naar de echte ondervraging.', pos: 36102, text: 'H5 — verhoor: sterk, maar Floris verdwijnt te snel op de achtergrond. Hij is duidelijk de angsthaas en heeft iets gezien dat hem echt schokt. Maak hem aanweziger tijdens het groepsverhoor — een reactie hier en daar, een blik die Eleni opvangt. Dat maakt zijn aparte verhoor later zwaarder.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1008, type: 'inline', resolved: false, quote: 'Eleni bedacht dat ze een passagier meehad en vertraagde haar snelheid.', pos: 53729, text: 'Idee voor herwerking: de partner is altijd verdachte nummer 1, dus het is ongeloofwaardig dat Eleni Thomas zelf naar het hotel rijdt. Wat als een brigadier Thomas naar het hotel brengt, terwijl Eleni alleen in haar eigen wagen achterna rijdt? In die auto kan ze dan een innerlijke monoloog houden: haar gedachten over de zaak, haar aanpak als inspecteur, en haar instinct dat Thomas ondanks alles niet schuldig lijkt.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1017, type: 'inline', resolved: false, quote: 'De ruimte was kouder dan Eleni verwacht had.', pos: 60899, text: 'H9 — autopsie: gaat te snel. Geef dit meer aandacht: de geluiden in de ruimte, het koude licht, Eleni\'s inwendige reactie op de wonden. De volgorde van de pathologische uitleg kan nog samenhangender. Laat Eleni ook eerst kijken voor en tijdens de autopsie en benadruk de gruwelijke toetakeling.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1019, type: 'inline', resolved: false, quote: 'Hij had acteur moeten worden!', pos: 83944, text: 'H13 — Kostas bij de jongeren: sterkste scène van de tweede helft. Geef de inwendige gedachten van Kostas weer — het doel heiligt de middelen, alles voor een dikke primeur. De opbouw naar het dronken moment gaat iets te snel: één cocktailronde meer beschrijven, de sfeer die loskomt, Stijn die grappen maakt. Schep een ontspannen sfeer die dan het contrast vormt met het ijzingwekkende verhaal.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1006, type: 'general', resolved: false, quote: '', pos: 999999, text: 'De afwisseling tussen de vier perspectieven (Thomas, de jongeren, Nikos, Eleni) in de eerste hoofdstukken werkt heel goed. Bekijk wel om de tijdstempels consequenter te gebruiken — soms ontbreekt er een.', author: 'Koen', date: '28 juni 2026' },
-  { id: 1007, type: 'general', resolved: false, quote: '', pos: 999999, text: 'De Minotaurus-mythe als ondertoon is een sterke keuze. Misschien kan je die nog iets explicieter verweven in de beschrijvingen van het landschap — Kreta zelf als labyrint?', author: 'Koen', date: '28 juni 2026' },
+  { id: 'k-101', type: 'inline', resolved: false, quote: 'Voetstappen naderden. Snel, gehaast, onritmisch.', pos: 1343, text: 'PROLOOG — cinematisch moment. De zin werkt perfect, maar staat verstopt in een langere alinea. Geef hem eigen wit: witregel voor én na. Dat maakt de breuk tastbaar.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-102', type: 'inline', resolved: false, quote: 'Ze droeg een zwarte jurk', pos: 1543, text: 'PROLOOG — kledij van de vrouw. De rouwzin verdient een eigen alinea. Nu verdwijnt ze in de beschrijving. Eén zin apart zetten geeft haar gewicht.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-103', type: 'inline', resolved: false, quote: 'Ze aarzelde niet.', pos: 2366, text: 'PROLOOG — perfecte zin. Niet aanraken. Dit is precies de kracht die de proloog nodig heeft.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-104', type: 'inline', resolved: false, quote: 'Dit was het leven!', pos: 5325, text: 'H1 — Jarne monoloog komt te vroeg. We kennen de sfeer nog niet goed genoeg. Overweeg dit blokje te verplaatsen naar nádat de joint aangestoken is — dan voelt het als een dronken gedachte.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-105', type: 'inline', resolved: false, quote: 'Een overweldigend geloei', pos: 7114, text: 'H1 — geluidsopbouw (gehijg → voetstappen → geloei) is uitstekend. Floris mag iets aanweziger zijn in de scene ervoor — zijn reactie op het geloei wordt dan zwaarder.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-106', type: 'inline', resolved: false, quote: 'Het bleef oorverdovend stil.', pos: 8826, text: 'H1 afsluiter — raak en sober. Overweeg dit als gedachte i.p.v. uitroep: "Was Sophia in de badkamer? Hij riep haar zacht, maar het bleef oorverdovend stil."', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-107', type: 'inline', resolved: false, quote: 'Thomas Brend rekte zich loom uit', pos: 9232, text: 'H2 — Thomas zijn angst gaat te abrupt van nul naar paniek. Laat het spiegelmoment en het water langer duren — dat is het sterkste stuk. Meer ruimte = meer wanhoop.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-108', type: 'inline', resolved: false, quote: 'Hij staarde naar zijn eigen spiegelbeeld', pos: 15646, text: 'H2 — sterkste moment van het hoofdstuk. Deze spiegelscène verdient meer ruimte: de details, het licht, zijn gedachten. Gun de lezer even hier te blijven.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-109', type: 'inline', resolved: false, quote: 'De rit naar Iraklion duurde een korte 30 minuten.', pos: 17481, text: 'H2 — gemiste kans. Dit is het moment waarop Thomas begint te beseffen dat er iets ernstig mis is. Geef de rit meer ruimte: Nikos zwijgt, Thomas probeert te bellen, zijn gedachten gaan naar het donkerste. Twee à drie alinea\'s.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-110', type: 'inline', resolved: false, quote: "Floris keek hem effen aan.", pos: 21869, text: "H3 — beste zin van het hoofdstuk. De effen blik gevolgd door de actie is perfect. Niet aanraken.", author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-111', type: 'inline', resolved: false, quote: 'Bel Mavrakis!', pos: 29365, text: 'H4 — perfecte cliffhanger. Zulke hoofdstukafsluiters mag je vaker gebruiken. Werkt sterk.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-112', type: 'inline', resolved: false, quote: 'Zijn oog viel op een post', pos: 30552, text: 'H4 — Facebook-passage: het herhalende "Alex" als zinsbegin klinkt slordig. Varieer de zinsbouw. Niet elke zin hoeft met zijn naam te beginnen.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-113', type: 'inline', resolved: false, quote: 'Klokslag zeven uur gaf hij zijn drie geadopteerde katten eten.', pos: 30932, text: 'H4 — katten Nikos. Vlottere formulering: "De talrijke katten rond zijn autoverhuurbedrijf gaf hij eerst brokjes en vers water." Geeft meteen meer Grieks karakter.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-114', type: 'inline', resolved: false, quote: 'Slaap vond ze zwaar overroepen.', pos: 36160, text: 'H5 — perfecte openingszin. Niet aanraken.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-115', type: 'inline', resolved: false, quote: 'Daarna ging ze over naar de echte ondervraging.', pos: 51925, text: 'H8 — Eleni twijfelmoment ontbreekt. Ze rijdt Thomas naar het hotel — de partner is altijd verdachte nr. 1. Voeg een korte innerlijke monoloog toe: haar instinct vs. de procedure.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-116', type: 'inline', resolved: false, quote: 'De tatoeage van een Minotaurus', pos: 124325, text: 'H12 — Minotaurus-tattoo Zacharias is een sterk beeld. De scène mag langer: laat Eleni even blijven hangen bij wat ze ziet. De mythe als ondertoon verdient dit moment.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-201', type: 'general', resolved: false, quote: '', pos: 999999, text: 'Tijdstempels zijn inconsistent doorheen de eerste 12 hoofdstukken. Soms aanwezig, soms niet. Kies één aanpak en hou die consequent aan.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-202', type: 'general', resolved: false, quote: '', pos: 999999, text: 'Kostas is nu wat vlak als personage. Geef hem één menselijke tik — een gewoonte, een zwakheid, iets wat hem onderscheidt van een generieke journalist.', author: 'Koen', date: '25 oktober 2026' },
+  { id: 'k-203', type: 'general', resolved: false, quote: '', pos: 999999, text: 'De proloog speelt in 1990 maar de link met het heden (de moord) is niet expliciet. Overweeg één verbindende detail dat de lezer pas later herkent.', author: 'Koen', date: '25 oktober 2026' },
 ]
 
 const CREDS = {
@@ -49,7 +51,6 @@ function parseBook(text) {
     if (t.startsWith('**') || t.startsWith('BREAKING')) {
       blocks.push({ type: 'breaking', text: t.replace(/\*\*/g, '') }); i++; continue
     }
-    // Match chapter headings — plain or bold (e.g. **11.**)
     const chapterMatch = t.match(/^\*{0,2}(Proloog|Epiloog|Notities|\d+\.?)\*{0,2}\.?\s*$/)
     if (chapterMatch) {
       const raw = chapterMatch[1].replace('.', '').trim()
@@ -84,13 +85,10 @@ function Block({ block, notes, onHighlightClick }) {
   function renderBold(text, keyPrefix) {
     const parts = text.split(/(\*\*[^*]+\*\*)/)
     return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={keyPrefix + '-b' + i}>{part.slice(2, -2)}</strong>
-      }
+      if (part.startsWith('**') && part.endsWith('**')) return <strong key={keyPrefix + '-b' + i}>{part.slice(2, -2)}</strong>
       return part
     })
   }
-
   function wrapText(content) {
     const matches = []
     active.forEach(note => { const idx = content.indexOf(note.quote); if (idx !== -1) matches.push({ idx, note }) })
@@ -169,11 +167,12 @@ function PinLogin({ onLogin }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null)
+  const [session, setSession] = useState(() => loadSession())
   const [notes, setNotes] = useState(INITIAL_NOTES)
   const [viewingEnabled, setViewingEnabled] = useState(true)
-  const [overrideBook, setOverrideBook] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [bookText, setBookText] = useState(BOOK_TEXT)
+  const [bookDate, setBookDate] = useState('28 juni 2026')
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const [overlayOpen, setOverlayOpen] = useState(false)
@@ -188,34 +187,41 @@ export default function App() {
   const [popup, setPopup] = useState(null)
   const [uploadStatus, setUploadStatus] = useState('')
   const [brokenNotes, setBrokenNotes] = useState([])
+  const [error, setError] = useState('')
 
   const pageRef = useRef()
   const overlayListRef = useRef()
   const sidebarListRef = useRef()
   const touchStartX = useRef(null)
 
-  const book = overrideBook || { content: BOOK_TEXT, name: 'Voor de zon opkwam', date: '28 juni 2026' }
-  const bookText = book.content || ''
   const pages = paginateBlocks(parseBook(bookText))
   const totalPages = pages.length
 
+  // Laad boek van server na login
   useEffect(() => {
-    // Load overrideBook from localStorage (too large for JSONBin)
-    try {
-      const stored = localStorage.getItem('overrideBook')
-      if (stored) setOverrideBook(JSON.parse(stored))
-    } catch {}
-    getData().then(d => {
-      if (d.viewingEnabled !== undefined) setViewingEnabled(d.viewingEnabled)
-      if (d.userNotes && d.userNotes.length) {
-        const ids = new Set(INITIAL_NOTES.map(n => n.id))
-        setNotes([...INITIAL_NOTES, ...d.userNotes.filter(n => !ids.has(n.id))])
+    if (!session) return
+    setLoading(true); setError('')
+    fetchBook(session).then(data => {
+      if (data.viewingEnabled !== undefined) setViewingEnabled(data.viewingEnabled)
+      // Laad opmerkingen van server
+      const serverUserNotes = data.userNotes || []
+      const serverResolvedIds = new Set(data.resolvedIds || [])
+      const ids = new Set(INITIAL_NOTES.map(n => n.id))
+      const merged = [
+        ...INITIAL_NOTES.map(n => ({ ...n, resolved: serverResolvedIds.has(n.id) ? true : n.resolved })),
+        ...serverUserNotes.filter(n => !ids.has(n.id)),
+      ]
+      setNotes(merged)
+      // Laad boektekst van server als die er is
+      if (data.text) {
+        setBookText(data.text)
+        if (data.updatedAt) setBookDate(new Date(data.updatedAt).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }))
       }
-      if (d.resolvedIds && d.resolvedIds.length) {
-        setNotes(prev => prev.map(n => ({ ...n, resolved: d.resolvedIds.includes(n.id) ? true : n.resolved })))
-      }
-    }).catch(() => {}).finally(() => setLoading(false))
-  }, [])
+    }).catch(err => {
+      if (err.status === 401) { clearSession(); setSession(null) }
+      else setError(err.message)
+    }).finally(() => setLoading(false))
+  }, [session])
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'ArrowRight') goNext(); if (e.key === 'ArrowLeft') goPrev() }
@@ -233,8 +239,8 @@ export default function App() {
     touchStartX.current = null
   }
 
-  const canView = user?.role === 'writer' || user?.role === 'editor' || viewingEnabled
-  const isEditor = user?.role === 'editor' || user?.role === 'writer'
+  const canView = session?.role === 'writer' || session?.role === 'editor' || viewingEnabled
+  const isEditor = session?.role === 'editor' || session?.role === 'writer'
 
   const inlineNotes = notes.filter(n => n.type === 'inline').sort((a, b) => {
     const pa = a.pos !== undefined ? a.pos : (a.quote ? bookText.indexOf(a.quote) : Infinity)
@@ -250,20 +256,16 @@ export default function App() {
       const ids = new Set(INITIAL_NOTES.map(n => n.id))
       const userNotes = newNotes.filter(n => !ids.has(n.id))
       const resolvedIds = newNotes.filter(n => n.resolved).map(n => n.id)
-      const d = await getData()
-      // Never send overrideBook to JSONBin — it's stored in localStorage
-      const { overrideBook: _ignored, ...rest } = d
-      await setData({ ...rest, userNotes, resolvedIds })
-    } finally { setSaving(false) }
+      await saveNotes(session, userNotes, resolvedIds)
+    } catch (e) { console.error(e) }
+    finally { setSaving(false) }
   }
 
   async function toggleViewing() {
     const next = !viewingEnabled; setViewingEnabled(next); setSaving(true)
-    try {
-      const d = await getData()
-      const { overrideBook: _ignored, ...rest } = d
-      await setData({ ...rest, viewingEnabled: next })
-    } finally { setSaving(false) }
+    try { await setViewing(session, next) }
+    catch (e) { console.error(e) }
+    finally { setSaving(false) }
   }
 
   async function handleFileUpload(e) {
@@ -274,10 +276,8 @@ export default function App() {
       if (file.name.endsWith('.docx')) {
         const arrayBuffer = await file.arrayBuffer()
         const result = await mammoth.extractRawText({ arrayBuffer })
-        // Also get HTML to detect bold
         const htmlResult = await mammoth.convertToHtml({ arrayBuffer })
         const html = htmlResult.value
-        // Parse bold from HTML — replace <strong>...</strong> with **...**
         const parser = new DOMParser()
         const doc = parser.parseFromString(html, 'text/html')
         function nodeToText(node) {
@@ -296,24 +296,30 @@ export default function App() {
       }
       const broken = notes.filter(n => n.type === 'inline' && n.quote && text.indexOf(n.quote) === -1)
       setBrokenNotes(broken)
-      const ob = { content: text, name: file.name.replace(/\.(docx|txt)$/i, ''), date: new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }) }
-      setOverrideBook(ob); setCurrentPage(0)
-      // Store book in localStorage (JSONBin free tier can't handle ~142k chars)
-      try { localStorage.setItem('overrideBook', JSON.stringify(ob)) } catch {}
-      setUploadStatus(broken.length > 0 ? `⚠ ${broken.length} opmerking(en) niet meer gevonden in de nieuwe tekst` : '✓ Geüpload op ' + ob.date)
-    } catch (err) { console.error(err); setUploadStatus('Fout bij uploaden.') }
+      const date = new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })
+
+      // Sla op via Netlify Function
+      setSaving(true)
+      await saveBookText(session, text)
+      setBookText(text)
+      setBookDate(date)
+      setCurrentPage(0)
+      setSaving(false)
+
+      setUploadStatus(broken.length > 0 ? `⚠ ${broken.length} opmerking(en) niet meer gevonden in de nieuwe tekst` : '✓ Geüpload op ' + date)
+    } catch (err) { console.error(err); setUploadStatus('Fout bij uploaden.'); setSaving(false) }
     e.target.value = ''
   }
 
   function exportTxt() {
-    const blob = new Blob([book.content], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob([bookText], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url; a.download = book.name + '.txt'; a.click()
+    const a = document.createElement('a'); a.href = url; a.download = 'voor-de-zon-opkwam.txt'; a.click()
     URL.revokeObjectURL(url)
   }
 
   useEffect(() => {
-    if (user?.role !== 'editor') return
+    if (session?.role !== 'editor') return
     function onUp() {
       const sel = window.getSelection(); const txt = sel?.toString().trim()
       if (!txt || txt.length < 3) { setPopup(null); return }
@@ -323,7 +329,7 @@ export default function App() {
     }
     document.addEventListener('mouseup', onUp)
     return () => document.removeEventListener('mouseup', onUp)
-  }, [user, bookText])
+  }, [session, bookText])
 
   function scrollToNote(noteId, listRef) {
     const el = document.getElementById('note-' + noteId)
@@ -368,7 +374,7 @@ export default function App() {
 
   async function sendNote() {
     if (!draft.trim() || (noteType === 'inline' && !selectedQuote)) return
-    const n = { id: Date.now(), type: noteType, resolved: false, quote: noteType === 'inline' ? selectedQuote : '', pos: noteType === 'inline' ? selectedPos : Infinity, text: draft.trim(), author: user.displayName, date: new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }) }
+    const n = { id: Date.now(), type: noteType, resolved: false, quote: noteType === 'inline' ? selectedQuote : '', pos: noteType === 'inline' ? selectedPos : Infinity, text: draft.trim(), author: session.displayName, date: new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }) }
     const updated = [...notes, n]; setNotes(updated); setDraft(''); setSelectedQuote(''); setSelectedPos(Infinity); setNoteType('general')
     await persist(updated)
   }
@@ -397,8 +403,8 @@ export default function App() {
         ) : <div className="suggestion-text">{note.text}</div>}
         <div className="suggestion-meta">{note.author} · {note.date}{note.resolved ? ' · ✓ verwerkt' : ''}</div>
         <div className="suggestion-actions" onClick={e => e.stopPropagation()}>
-          {user.role === 'writer' && <button className="suggestion-action-btn resolve" onClick={() => resolveNote(note.id)}>{note.resolved ? 'Heropen' : '✓ Verwerkt'}</button>}
-          {user.role === 'editor' && <>
+          {session.role === 'writer' && <button className="suggestion-action-btn resolve" onClick={() => resolveNote(note.id)}>{note.resolved ? 'Heropen' : '✓ Verwerkt'}</button>}
+          {session.role === 'editor' && <>
             <button className="suggestion-action-btn" onClick={() => { setEditingNoteId(note.id); setEditingNoteText(note.text) }}>Bewerk</button>
             <button className="suggestion-action-btn delete" onClick={() => deleteNote(note.id)}>Verwijder</button>
           </>}
@@ -419,7 +425,7 @@ export default function App() {
             ? <div className="no-suggestions">Geen opmerkingen.</div>
             : (activeTab === 'inline' ? inlineNotes : generalNotes).map(note => <NoteCard key={note.id} note={note}/>)}
         </div>
-        {user.role === 'editor' && (
+        {session.role === 'editor' && (
           <div className="suggestion-form">
             <div className="note-type-row">
               <button className={`note-type-btn ${noteType === 'general' ? 'active' : ''}`} onClick={() => setNoteType('general')}>Algemeen</button>
@@ -434,15 +440,23 @@ export default function App() {
     )
   }
 
-  if (!user) return <PinLogin onLogin={(name, role, displayName) => setUser({ name, role, displayName })}/>
-  if (loading) return <div className="loading">Laden…</div>
+  function handleLogin(name, role, displayName) {
+    const pin = CREDS[name]?.pin || READER_PIN
+    const s = { name, role, displayName, pin }
+    saveSession(s)
+    setSession(s)
+  }
 
-  const dotColor = user.role === 'writer' ? '#b97a5a' : user.role === 'editor' ? '#5a7ab9' : '#5aab6a'
-  const roleLabel = user.role === 'writer' ? 'Schrijver' : user.role === 'editor' ? 'Redacteur' : 'Lezer'
+  if (!session) return <PinLogin onLogin={handleLogin}/>
+  if (loading) return <div className="loading">Laden…</div>
+  if (error) return <div className="loading">Fout: {error} <button onClick={() => { clearSession(); setSession(null) }}>Opnieuw aanmelden</button></div>
+
+  const dotColor = session.role === 'writer' ? '#b97a5a' : session.role === 'editor' ? '#5a7ab9' : '#5aab6a'
+  const roleLabel = session.role === 'writer' ? 'Schrijver' : session.role === 'editor' ? 'Redacteur' : 'Lezer'
 
   return (
     <div className="app" style={{ background: '#d4c9b0' }}>
-      {popup && user?.role === 'editor' && (
+      {popup && session?.role === 'editor' && (
         <div className="selection-popup" style={{ left: popup.x, top: popup.y, transform: 'translate(-50%,-100%)' }}>
           <button onClick={() => { setNoteType('inline'); setActiveTab('inline'); setPopup(null); window.getSelection()?.removeAllRanges() }}>+ Inline opmerking</button>
           <button onClick={() => setPopup(null)}>✕</button>
@@ -478,17 +492,17 @@ export default function App() {
               💬 {openNotes > 0 && <span className="notes-badge">{openNotes}</span>}
             </button>
           )}
-          {user.role === 'writer' && (
+          {session.role === 'writer' && (
             <>
-              <label className="upload-label">📄 <input type="file" accept=".txt" style={{ display: 'none' }} onChange={handleFileUpload}/></label>
+              <label className="upload-label">📄 <input type="file" accept=".docx,.txt" style={{ display: 'none' }} onChange={handleFileUpload}/></label>
               <button className="export-label" onClick={exportTxt}>⬇</button>
               <button className={`toggle ${viewingEnabled ? 'on' : ''}`} onClick={toggleViewing} title={viewingEnabled ? 'Zichtbaar voor iedereen' : 'Enkel jij & Koen'}/>
             </>
           )}
-          <div className={`badge badge-${user.role}`}>
-            <div className="badge-dot" style={{ background: dotColor }}/>{user.displayName} · {roleLabel}
+          <div className={`badge badge-${session.role}`}>
+            <div className="badge-dot" style={{ background: dotColor }}/>{session.displayName} · {roleLabel}
           </div>
-          <button className="logout-btn" style={{ color: 'rgba(255,255,255,.6)', borderColor: 'rgba(255,255,255,.18)' }} onClick={() => setUser(null)}>Afmelden</button>
+          <button className="logout-btn" style={{ color: 'rgba(255,255,255,.6)', borderColor: 'rgba(255,255,255,.18)' }} onClick={() => { clearSession(); setSession(null) }}>Afmelden</button>
         </div>
       </div>
 
@@ -519,7 +533,7 @@ export default function App() {
         {isEditor && (
           <div className="editor-sidebar">
             <div className="sidebar-header">
-              <h3>{user.role === 'editor' ? 'Opmerkingen' : 'Opmerkingen van Koen'}</h3>
+              <h3>{session.role === 'editor' ? 'Opmerkingen' : 'Opmerkingen van Koen'}</h3>
               <p>Klik om naar de pagina te springen</p>
             </div>
             <NotePanel listRef={sidebarListRef}/>
