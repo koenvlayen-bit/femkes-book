@@ -39,6 +39,18 @@ export default async (req) => {
       return json({ userNotes: next.userNotes, resolvedIds: next.resolvedIds });
     }
 
+    // Noten seeden — alleen schrijver, vervangt alle bestaande noten
+    if (body.action === "seedNotes") {
+      if (role !== "writer") return json({ error: "Alleen de schrijver kan seeden." }, 403);
+      const main = await readMain();
+      const next = await writeMain({
+        ...main,
+        userNotes: Array.isArray(body.userNotes) ? body.userNotes : [],
+        resolvedIds: [],
+      });
+      return json({ seeded: next.userNotes.length });
+    }
+
     return json({ error: "Onbekende actie." }, 400);
   } catch (err) {
     return json({ error: err.message }, 500);

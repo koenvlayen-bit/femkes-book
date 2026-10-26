@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import mammoth from 'mammoth'
-import { fetchBook, saveBookText, saveNotes, setViewing, loadSession, saveSession, clearSession } from './api.js'
+import { fetchBook, saveBookText, saveNotes, seedNotes, setViewing, loadSession, saveSession, clearSession } from './api.js'
+import SEED_NOTES from './initialNotes.js'
 import BOOK_TEXT from './bookText.js'
 import './App.css'
 
@@ -190,7 +191,17 @@ export default function App() {
         resolved: serverResolvedIds.has(String(n.id)) || Boolean(n.resolved),
       }))
       console.log('[fetchBook] geladen:', allNotes.length, 'noten, resolvedIds:', [...serverResolvedIds])
-      setNotes(allNotes)
+
+      // Seed redacteursnoten als de server leeg is en de ingelogde gebruiker writer is
+      if (allNotes.length === 0 && session.role === 'writer') {
+        console.log('[seed] geen noten op server — seeden...')
+        seedNotes(session, SEED_NOTES).then(r => {
+          console.log('[seed] klaar:', r.seeded, 'noten')
+          setNotes(SEED_NOTES)
+        }).catch(e => console.error('[seed] fout:', e))
+      } else {
+        setNotes(allNotes)
+      }
       // Laad boektekst van server als die er is
       if (data.text) {
         setBookText(data.text)

@@ -37,3 +37,5 @@ export const saveBookText = (session, text) =>
   request("admin", { session, method: "POST", body: { action: "saveText", text } });
 export const saveNotes = (session, userNotes, resolvedIds) =>
   request("admin", { session, method: "POST", body: { action: "saveNotes", userNotes, resolvedIds } });
+export const seedNotes = (session, userNotes) =>
+  request("admin", { session, method: "POST", body: { action: "seedNotes", userNotes } });
