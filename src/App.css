@@ -125,7 +125,7 @@ body{font-family:'Inter',sans-serif;background:#d4c9b0}
 .note-type-btn{flex:1;padding:6px 0;font-size:.73rem;font-family:'Inter',sans-serif;border-radius:5px;cursor:pointer;border:1px solid #ddd;background:transparent;color:#8a7e75;font-weight:500}
 .note-type-btn.active{background:#5a7ab9;color:#fff;border-color:#5a7ab9}
 .selection-hint{font-size:.71rem;color:#9a8e85;font-style:italic;text-align:center;margin-bottom:6px}
-.suggestion-textarea{width:100%;padding:9px 11px;border:1px solid #ddd8cf;border-radius:7px;font-family:'Lora',serif;font-size:.83rem;resize:vertical;min-height:72px;outline:none;color:#26201a;background:#fdfcfa;margin-bottom:8px}
+.suggestion-textarea{width:100%;padding:9px 11px;border:1px solid #ddd8cf;border-radius:7px;font-family:'Lora',serif;font-size:.83rem;resize:vertical;min-height:72px;outline:none;color:#26201a;background:#fdfcfa;margin-bottom:8px;direction:ltr;unicode-bidi:plaintext}
 .suggestion-textarea:focus{border-color:#5a7ab9}
 .send-btn{width:100%;padding:8px;background:#5a7ab9;color:#fff;border:none;border-radius:7px;font-family:'Inter',sans-serif;font-weight:500;font-size:.8rem;cursor:pointer}
 .send-btn:disabled{background:#c0b8b0;cursor:default}
