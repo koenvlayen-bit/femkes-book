@@ -4,27 +4,6 @@ import { fetchBook, saveBookText, saveNotes, setViewing, loadSession, saveSessio
 import BOOK_TEXT from './bookText.js'
 import './App.css'
 
-const INITIAL_NOTES = [
-  { id: 'k-101', type: 'inline', resolved: false, quote: 'Voetstappen naderden. Snel, gehaast, onritmisch.', pos: 1343, text: 'PROLOOG — cinematisch moment. De zin werkt perfect, maar staat verstopt in een langere alinea. Geef hem eigen wit: witregel voor én na. Dat maakt de breuk tastbaar.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-102', type: 'inline', resolved: false, quote: 'Ze droeg een zwarte jurk', pos: 1543, text: 'PROLOOG — kledij van de vrouw. De rouwzin verdient een eigen alinea. Nu verdwijnt ze in de beschrijving. Eén zin apart zetten geeft haar gewicht.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-103', type: 'inline', resolved: false, quote: 'Ze aarzelde niet.', pos: 2366, text: 'PROLOOG — perfecte zin. Niet aanraken. Dit is precies de kracht die de proloog nodig heeft.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-104', type: 'inline', resolved: false, quote: 'Dit was het leven!', pos: 5325, text: 'H1 — Jarne monoloog komt te vroeg. We kennen de sfeer nog niet goed genoeg. Overweeg dit blokje te verplaatsen naar nádat de joint aangestoken is — dan voelt het als een dronken gedachte.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-105', type: 'inline', resolved: false, quote: 'Een overweldigend geloei', pos: 7114, text: 'H1 — geluidsopbouw (gehijg → voetstappen → geloei) is uitstekend. Floris mag iets aanweziger zijn in de scene ervoor — zijn reactie op het geloei wordt dan zwaarder.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-106', type: 'inline', resolved: false, quote: 'Het bleef oorverdovend stil.', pos: 8826, text: 'H1 afsluiter — raak en sober. Overweeg dit als gedachte i.p.v. uitroep: "Was Sophia in de badkamer? Hij riep haar zacht, maar het bleef oorverdovend stil."', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-107', type: 'inline', resolved: false, quote: 'Thomas Brend rekte zich loom uit', pos: 9232, text: 'H2 — Thomas zijn angst gaat te abrupt van nul naar paniek. Laat het spiegelmoment en het water langer duren — dat is het sterkste stuk. Meer ruimte = meer wanhoop.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-108', type: 'inline', resolved: false, quote: 'Hij staarde naar zijn eigen spiegelbeeld', pos: 15646, text: 'H2 — sterkste moment van het hoofdstuk. Deze spiegelscène verdient meer ruimte: de details, het licht, zijn gedachten. Gun de lezer even hier te blijven.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-109', type: 'inline', resolved: false, quote: 'De rit naar Iraklion duurde een korte 30 minuten.', pos: 17481, text: 'H2 — gemiste kans. Dit is het moment waarop Thomas begint te beseffen dat er iets ernstig mis is. Geef de rit meer ruimte: Nikos zwijgt, Thomas probeert te bellen, zijn gedachten gaan naar het donkerste. Twee à drie alinea\'s.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-110', type: 'inline', resolved: false, quote: "Floris keek hem effen aan.", pos: 21869, text: "H3 — beste zin van het hoofdstuk. De effen blik gevolgd door de actie is perfect. Niet aanraken.", author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-111', type: 'inline', resolved: false, quote: 'Bel Mavrakis!', pos: 29365, text: 'H4 — perfecte cliffhanger. Zulke hoofdstukafsluiters mag je vaker gebruiken. Werkt sterk.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-112', type: 'inline', resolved: false, quote: 'Zijn oog viel op een post', pos: 30552, text: 'H4 — Facebook-passage: het herhalende "Alex" als zinsbegin klinkt slordig. Varieer de zinsbouw. Niet elke zin hoeft met zijn naam te beginnen.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-113', type: 'inline', resolved: false, quote: 'Klokslag zeven uur gaf hij zijn drie geadopteerde katten eten.', pos: 30932, text: 'H4 — katten Nikos. Vlottere formulering: "De talrijke katten rond zijn autoverhuurbedrijf gaf hij eerst brokjes en vers water." Geeft meteen meer Grieks karakter.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-114', type: 'inline', resolved: false, quote: 'Slaap vond ze zwaar overroepen.', pos: 36160, text: 'H5 — perfecte openingszin. Niet aanraken.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-115', type: 'inline', resolved: false, quote: 'Daarna ging ze over naar de echte ondervraging.', pos: 51925, text: 'H8 — Eleni twijfelmoment ontbreekt. Ze rijdt Thomas naar het hotel — de partner is altijd verdachte nr. 1. Voeg een korte innerlijke monoloog toe: haar instinct vs. de procedure.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-116', type: 'inline', resolved: false, quote: 'De tatoeage van een Minotaurus', pos: 124325, text: 'H12 — Minotaurus-tattoo Zacharias is een sterk beeld. De scène mag langer: laat Eleni even blijven hangen bij wat ze ziet. De mythe als ondertoon verdient dit moment.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-201', type: 'general', resolved: false, quote: '', pos: 999999, text: 'Tijdstempels zijn inconsistent doorheen de eerste 12 hoofdstukken. Soms aanwezig, soms niet. Kies één aanpak en hou die consequent aan.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-202', type: 'general', resolved: false, quote: '', pos: 999999, text: 'Kostas is nu wat vlak als personage. Geef hem één menselijke tik — een gewoonte, een zwakheid, iets wat hem onderscheidt van een generieke journalist.', author: 'Koen', date: '25 oktober 2026' },
-  { id: 'k-203', type: 'general', resolved: false, quote: '', pos: 999999, text: 'De proloog speelt in 1990 maar de link met het heden (de moord) is niet expliciet. Overweeg één verbindende detail dat de lezer pas later herkent.', author: 'Koen', date: '25 oktober 2026' },
-]
 
 const CREDS = {
   'Femke': { pin: '6600', role: 'writer', displayName: 'Femke' },
@@ -168,7 +147,7 @@ function PinLogin({ onLogin }) {
 
 export default function App() {
   const [session, setSession] = useState(() => loadSession())
-  const [notes, setNotes] = useState(INITIAL_NOTES)
+  const [notes, setNotes] = useState([])
   const [viewingEnabled, setViewingEnabled] = useState(true)
   const [bookText, setBookText] = useState(BOOK_TEXT)
   const [bookDate, setBookDate] = useState('28 juni 2026')
@@ -206,12 +185,8 @@ export default function App() {
       // Laad opmerkingen van server
       const serverUserNotes = data.userNotes || []
       const serverResolvedIds = new Set(data.resolvedIds || [])
-      const ids = new Set(INITIAL_NOTES.map(n => n.id))
-      const merged = [
-        ...INITIAL_NOTES.map(n => ({ ...n, resolved: serverResolvedIds.has(n.id) ? true : n.resolved })),
-        ...serverUserNotes.filter(n => !ids.has(n.id)),
-      ]
-      setNotes(merged)
+      const allNotes = serverUserNotes.map(n => ({ ...n, resolved: serverResolvedIds.has(n.id) ? true : n.resolved }))
+      setNotes(allNotes)
       // Laad boektekst van server als die er is
       if (data.text) {
         setBookText(data.text)
@@ -253,10 +228,8 @@ export default function App() {
   async function persist(newNotes) {
     setSaving(true)
     try {
-      const ids = new Set(INITIAL_NOTES.map(n => n.id))
-      const userNotes = newNotes.filter(n => !ids.has(n.id))
       const resolvedIds = newNotes.filter(n => n.resolved).map(n => n.id)
-      await saveNotes(session, userNotes, resolvedIds)
+      await saveNotes(session, newNotes, resolvedIds)
     } catch (e) { console.error(e) }
     finally { setSaving(false) }
   }
@@ -382,10 +355,10 @@ export default function App() {
   async function deleteNote(id) { const u = notes.filter(n => n.id !== id); setNotes(u); await persist(u) }
   async function saveEditNote(id) { const u = notes.map(n => n.id === id ? { ...n, text: editingNoteText } : n); setNotes(u); setEditingNoteId(null); await persist(u) }
 
-  function NoteCard({ note }) {
+  const renderNoteCard = (note) => {
     const isBroken = brokenNotes.some(b => b.id === note.id)
     return (
-      <div id={'note-' + note.id}
+      <div key={note.id} id={'note-' + note.id}
         className={`suggestion-card ${note.type === 'inline' ? 'inline-note' : 'general-note'} ${note.resolved ? 'resolved' : ''} ${isBroken ? 'broken' : ''} ${activeNoteId === note.id ? 'note-active' : ''}`}
         style={{ cursor: note.type === 'inline' && note.quote ? 'pointer' : 'default' }}
         onClick={() => handleSidebarClick(note)}>
@@ -413,32 +386,30 @@ export default function App() {
     )
   }
 
-  function NotePanel({ listRef }) {
-    return (
-      <>
-        <div className="sidebar-tabs">
-          <button className={`sidebar-tab ${activeTab === 'inline' ? 'active' : ''}`} onClick={() => setActiveTab('inline')}>Inline ({inlineNotes.length})</button>
-          <button className={`sidebar-tab ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>Algemeen ({generalNotes.length})</button>
-        </div>
-        <div ref={listRef} className="suggestions-list">
-          {(activeTab === 'inline' ? inlineNotes : generalNotes).length === 0
-            ? <div className="no-suggestions">Geen opmerkingen.</div>
-            : (activeTab === 'inline' ? inlineNotes : generalNotes).map(note => <NoteCard key={note.id} note={note}/>)}
-        </div>
-        {session.role === 'editor' && (
-          <div className="suggestion-form">
-            <div className="note-type-row">
-              <button className={`note-type-btn ${noteType === 'general' ? 'active' : ''}`} onClick={() => setNoteType('general')}>Algemeen</button>
-              <button className={`note-type-btn ${noteType === 'inline' ? 'active' : ''}`} onClick={() => setNoteType('inline')}>Inline</button>
-            </div>
-            {noteType === 'inline' && <div className="selection-hint">{selectedQuote ? `✓ "${selectedQuote.slice(0, 35)}…"` : 'Selecteer tekst in het verhaal'}</div>}
-            <textarea className="suggestion-textarea" placeholder={noteType === 'inline' ? 'Opmerking bij geselecteerde tekst…' : 'Algemene opmerking…'} value={draft} onChange={e => setDraft(e.target.value)}/>
-            <button className="send-btn" onClick={sendNote} disabled={!draft.trim() || (noteType === 'inline' && !selectedQuote)}>Opmerking toevoegen</button>
+  const renderNotePanel = (listRef) => (
+    <>
+      <div className="sidebar-tabs">
+        <button className={`sidebar-tab ${activeTab === 'inline' ? 'active' : ''}`} onClick={() => setActiveTab('inline')}>Inline ({inlineNotes.length})</button>
+        <button className={`sidebar-tab ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>Algemeen ({generalNotes.length})</button>
+      </div>
+      <div ref={listRef} className="suggestions-list">
+        {(activeTab === 'inline' ? inlineNotes : generalNotes).length === 0
+          ? <div className="no-suggestions">Geen opmerkingen.</div>
+          : (activeTab === 'inline' ? inlineNotes : generalNotes).map(renderNoteCard)}
+      </div>
+      {session.role === 'editor' && (
+        <div className="suggestion-form">
+          <div className="note-type-row">
+            <button className={`note-type-btn ${noteType === 'general' ? 'active' : ''}`} onClick={() => setNoteType('general')}>Algemeen</button>
+            <button className={`note-type-btn ${noteType === 'inline' ? 'active' : ''}`} onClick={() => setNoteType('inline')}>Inline</button>
           </div>
-        )}
-      </>
-    )
-  }
+          {noteType === 'inline' && <div className="selection-hint">{selectedQuote ? `✓ "${selectedQuote.slice(0, 35)}…"` : 'Selecteer tekst in het verhaal'}</div>}
+          <textarea className="suggestion-textarea" placeholder={noteType === 'inline' ? 'Opmerking bij geselecteerde tekst…' : 'Algemene opmerking…'} value={draft} onChange={e => setDraft(e.target.value)}/>
+          <button className="send-btn" onClick={sendNote} disabled={!draft.trim() || (noteType === 'inline' && !selectedQuote)}>Opmerking toevoegen</button>
+        </div>
+      )}
+    </>
+  )
 
   function handleLogin(name, role, displayName) {
     const pin = CREDS[name]?.pin || READER_PIN
@@ -474,7 +445,7 @@ export default function App() {
               </div>
               <button className="overlay-close" onClick={() => setOverlayOpen(false)}>✕</button>
             </div>
-            <NotePanel listRef={overlayListRef}/>
+            {renderNotePanel(overlayListRef)}
           </div>
         </div>
       )}
@@ -536,7 +507,7 @@ export default function App() {
               <h3>{session.role === 'editor' ? 'Opmerkingen' : 'Opmerkingen van Koen'}</h3>
               <p>Klik om naar de pagina te springen</p>
             </div>
-            <NotePanel listRef={sidebarListRef}/>
+            {renderNotePanel(sidebarListRef)}
           </div>
         )}
       </div>
