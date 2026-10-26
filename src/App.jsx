@@ -185,7 +185,11 @@ export default function App() {
       // Laad opmerkingen van server
       const serverUserNotes = data.userNotes || []
       const serverResolvedIds = new Set(data.resolvedIds || [])
-      const allNotes = serverUserNotes.map(n => ({ ...n, resolved: serverResolvedIds.has(n.id) ? true : n.resolved }))
+      const allNotes = serverUserNotes.map(n => ({
+        ...n,
+        resolved: serverResolvedIds.has(String(n.id)) || Boolean(n.resolved),
+      }))
+      console.log('[fetchBook] geladen:', allNotes.length, 'noten, resolvedIds:', [...serverResolvedIds])
       setNotes(allNotes)
       // Laad boektekst van server als die er is
       if (data.text) {
@@ -230,7 +234,8 @@ export default function App() {
     try {
       const resolvedIds = newNotes.filter(n => n.resolved).map(n => n.id)
       await saveNotes(session, newNotes, resolvedIds)
-    } catch (e) { console.error(e) }
+      console.log('[persist] opgeslagen:', newNotes.length, 'noten, resolvedIds:', resolvedIds)
+    } catch (e) { console.error('[persist] fout:', e) }
     finally { setSaving(false) }
   }
 
