@@ -55,10 +55,15 @@ body{font-family:'Inter',sans-serif;background:#d4c9b0}
 
 /* Main layout */
 .main{display:flex;flex:1;overflow:hidden}
-.reading-area{flex:1;overflow-y:auto}
+.reading-area{flex:1;overflow:hidden;display:flex;flex-direction:column;background:#d4c9b0;padding:28px 24px 18px;min-height:0}
 
 /* Book page */
-.book-page{max-width:680px;margin:0 auto;background:#fdfaf4;box-shadow:0 4px 40px rgba(0,0,0,.22),2px 2px 0 #c8bca4,4px 4px 0 #bdb09a;border-radius:2px 8px 8px 2px;padding:56px 68px 48px;min-height:70vh}
+.book-page{position:relative;flex:1;min-height:0;width:100%;max-width:680px;margin:0 auto;background:#fdfaf4;box-shadow:0 4px 40px rgba(0,0,0,.22),2px 2px 0 #c8bca4,4px 4px 0 #bdb09a;border-radius:2px 8px 8px 2px;padding:52px 68px 56px;overflow:hidden;user-select:text}
+.page-measurer{position:absolute;visibility:hidden;pointer-events:none;display:flow-root}
+.page-content{display:flow-root}
+.page-folio{position:absolute;left:0;right:0;bottom:20px;text-align:center;font-family:'Lora',serif;font-style:italic;font-size:.78rem;color:#b0a594;pointer-events:none}
+.book-para.split,.book-synopsis.split{text-align-last:justify}
+.book-para.split{margin-bottom:0}
 .book-synopsis{font-family:'Lora',serif;font-style:italic;font-size:1rem;line-height:1.85;color:#4a4035;background:#f5f0e8;border-left:3px solid #b97a5a;padding:18px 22px;border-radius:0 6px 6px 0;margin-bottom:40px}
 .chapter-page{text-align:center;margin-bottom:36px;padding-bottom:24px}
 .chapter-label{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:400;color:#26201a;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
@@ -137,8 +142,9 @@ body{font-family:'Inter',sans-serif;background:#d4c9b0}
 .selection-popup button:hover{background:rgba(255,255,255,.15)}
 
 @media(max-width:900px){
-  .reading-area{padding:20px 12px 16px}
-  .book-page{padding:32px 24px 28px}
+  .reading-area{padding:12px 10px 10px}
+  .book-page{padding:30px 22px 44px}
+  .page-folio{bottom:16px}
   .editor-sidebar{display:none}
   .book-label,.topbar-divider{display:none}
 }
