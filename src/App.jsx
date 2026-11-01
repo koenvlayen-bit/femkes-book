@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import mammoth from 'mammoth'
 import { fetchBook, saveBookText, saveNotes, seedNotes, setViewing, loadSession, saveSession, clearSession } from './api.js'
 import SEED_NOTES from './initialNotes.js'
@@ -47,17 +47,109 @@ function parseBook(text) {
   return blocks
 }
 
+// Fallback (voor de eerste render, vóór er gemeten is)
 function paginateBlocks(blocks) {
   const pages = []
   let current = [], paraCount = 0
   function flush() { if (current.length) { pages.push(current); current = []; paraCount = 0 } }
-  blocks.forEach(block => {
-    if (block.type === 'chapter') { flush(); current = [block]; paraCount = 0 }
-    else if (block.type === 'para') { current.push(block); paraCount++; if (paraCount >= PARAS_PER_PAGE) flush() }
-    else { current.push(block) }
+  blocks.forEach((block, bi) => {
+    const frag = { ...block, bi, fromWord: 0, toWord: Infinity }
+    if (block.type === 'chapter') { flush(); current = [frag]; paraCount = 0 }
+    else if (block.type === 'para') { current.push(frag); paraCount++; if (paraCount >= PARAS_PER_PAGE) flush() }
+    else { current.push(frag) }
   })
   flush()
   return pages
+}
+
+// ── E-reader paginering: vult elke pagina exact tot de beschikbare hoogte ──
+const SPLITTABLE = new Set(['para', 'synopsis', 'breaking'])
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+function boldHtml(text) {
+  return escapeHtml(text).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+}
+function splitWords(words, k) {
+  let a = words.slice(0, k).join(' ')
+  let r = words.slice(k).join(' ')
+  // Vetgedrukte stukken die over de knip lopen netjes sluiten en heropenen
+  if (((a.match(/\*\*/g) || []).length) % 2 === 1) { a += '**'; r = '**' + r }
+  return [a, r]
+}
+function measureEl(frag) {
+  let el
+  switch (frag.type) {
+    case 'synopsis': el = document.createElement('div'); el.className = 'book-synopsis'; el.textContent = frag.text; break
+    case 'chapter': {
+      el = document.createElement('div'); el.className = 'chapter-page'
+      el.innerHTML = `<div class="chapter-label">${escapeHtml(frag.label)}</div><div class="chapter-rule"></div>` +
+        (frag.sub ? `<div class="chapter-sub">${escapeHtml(frag.sub)}</div>` : '')
+      break
+    }
+    case 'timestamp': el = document.createElement('div'); el.className = 'chapter-sub'; el.style.textAlign = 'center'; el.textContent = frag.text; break
+    case 'breaking': el = document.createElement('div'); el.className = 'breaking-news'; el.textContent = frag.text; break
+    default: el = document.createElement('p'); el.className = 'book-para'; el.innerHTML = boldHtml(frag.text)
+  }
+  if (frag.split) el.classList.add('split')
+  if (frag.cont) el.classList.add('cont')
+  return el
+}
+
+function paginateMeasured(blocks, measurer, maxH) {
+  const pages = []
+  let cur = []
+  measurer.innerHTML = ''
+  const top = () => measurer.getBoundingClientRect().top
+  const fits = () => {
+    const last = measurer.lastElementChild
+    return !last || last.getBoundingClientRect().bottom - top() <= maxH
+  }
+  const tryFrag = frag => { const el = measureEl(frag); measurer.appendChild(el); const ok = fits(); measurer.removeChild(el); return ok }
+  const place = frag => { measurer.appendChild(measureEl(frag)); cur.push(frag) }
+  const newPage = () => { if (cur.length) pages.push(cur); cur = []; measurer.innerHTML = '' }
+
+  blocks.forEach((b, bi) => {
+    if (b.type === 'chapter' && cur.length) newPage()
+    const whole = { ...b, bi, fromWord: 0, toWord: Infinity }
+    if (tryFrag(whole)) { place(whole); return }
+    if (!SPLITTABLE.has(b.type)) { newPage(); place(whole); return }
+
+    // Alinea past niet volledig: knip op woordniveau, zoals een e-reader
+    let words = b.text.split(' '), offset = 0, cont = false
+    while (words.length) {
+      let lo = 0, hi = words.length
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2)
+        const [a] = splitWords(words, mid)
+        if (tryFrag({ ...b, text: a, split: mid < words.length, cont })) lo = mid; else hi = mid - 1
+      }
+      if (lo === 0) {
+        if (cur.length) { newPage(); continue }
+        lo = 1 // lege pagina en nog steeds te groot: forceer minstens één woord
+      }
+      if (lo >= words.length) {
+        place({ ...b, text: words.join(' '), bi, fromWord: offset, toWord: Infinity, cont })
+        break
+      }
+      const [a] = splitWords(words, lo)
+      place({ ...b, text: a, bi, fromWord: offset, toWord: offset + lo, cont, split: true })
+      newPage()
+      const [, r] = splitWords(words, lo)
+      offset += lo
+      words = r.split(' ')
+      cont = true
+    }
+  })
+  newPage()
+  measurer.innerHTML = ''
+  return pages
+}
+
+function findPage(pages, bi, word = 0) {
+  const idx = pages.findIndex(p => p.some(f => f.bi === bi && f.fromWord <= word && word < f.toWord))
+  return idx === -1 ? 0 : idx
 }
 
 function Block({ block, notes, onHighlightClick }) {
@@ -84,8 +176,9 @@ function Block({ block, notes, onHighlightClick }) {
     if (cursor < content.length) parts.push(...renderBold(content.slice(cursor), 'rbe'))
     return parts
   }
+  const fragClass = (block.split ? ' split' : '') + (block.cont ? ' cont' : '')
   switch (block.type) {
-    case 'synopsis': return <div className="book-synopsis">{block.text}</div>
+    case 'synopsis': return <div className={'book-synopsis' + fragClass}>{block.text}</div>
     case 'chapter': return (
       <div className="chapter-page">
         <div className="chapter-label">{block.label}</div>
@@ -94,8 +187,8 @@ function Block({ block, notes, onHighlightClick }) {
       </div>
     )
     case 'timestamp': return <div className="chapter-sub" style={{textAlign:'center'}}>{block.text}</div>
-    case 'breaking': return <div className="breaking-news">{block.text}</div>
-    case 'para': return <p className="book-para">{wrapText(block.text)}</p>
+    case 'breaking': return <div className={'breaking-news' + fragClass}>{block.text}</div>
+    case 'para': return <p className={'book-para' + fragClass}>{wrapText(block.text)}</p>
     default: return null
   }
 }
@@ -173,9 +266,52 @@ export default function App() {
   const overlayListRef = useRef()
   const sidebarListRef = useRef()
   const touchStartX = useRef(null)
+  const bookPageRef = useRef()
+  const measurerRef = useRef()
+  const anchorRef = useRef({ bi: 0, word: 0 })
 
-  const pages = paginateBlocks(parseBook(bookText))
+  const blocks = useMemo(() => parseBook(bookText), [bookText])
+  const fallbackPages = useMemo(() => paginateBlocks(blocks), [blocks])
+  const [measuredPages, setMeasuredPages] = useState(null)
+  const [layoutTick, setLayoutTick] = useState(0)
+  const pages = measuredPages || fallbackPages
   const totalPages = pages.length
+
+  // Onthoud waar de lezer zit (eerste stuk van de huidige pagina), zodat
+  // we na herpaginering (ander scherm / draaien / nieuw manuscript) op dezelfde plek blijven
+  useEffect(() => {
+    const first = pages[currentPage]?.[0]
+    if (first) anchorRef.current = { bi: first.bi, word: first.fromWord || 0 }
+  }, [currentPage, pages])
+
+  // Opnieuw pagineren wanneer de paginagrootte verandert of de lettertypes geladen zijn
+  useEffect(() => {
+    const el = bookPageRef.current
+    if (!el) return
+    let t
+    const bump = () => { clearTimeout(t); t = setTimeout(() => setLayoutTick(x => x + 1), 120) }
+    const ro = new ResizeObserver(bump)
+    ro.observe(el)
+    document.fonts?.ready.then(bump)
+    return () => { ro.disconnect(); clearTimeout(t) }
+  }, [session, loading, viewingEnabled])
+
+  useLayoutEffect(() => {
+    const page = bookPageRef.current, measurer = measurerRef.current
+    if (!page || !measurer) return
+    const cs = getComputedStyle(page)
+    const pt = parseFloat(cs.paddingTop), pb = parseFloat(cs.paddingBottom)
+    const pl = parseFloat(cs.paddingLeft), pr = parseFloat(cs.paddingRight)
+    measurer.style.left = pl + 'px'
+    measurer.style.width = (page.clientWidth - pl - pr) + 'px'
+    measurer.style.top = pt + 'px'
+    const maxH = page.clientHeight - pt - pb
+    if (maxH < 80) return
+    const result = paginateMeasured(blocks, measurer, maxH - 2)
+    setMeasuredPages(result)
+    const { bi, word } = anchorRef.current
+    setCurrentPage(findPage(result, bi, word))
+  }, [blocks, layoutTick])
 
   // Laad boek van server na login
   useEffect(() => {
@@ -221,6 +357,15 @@ export default function App() {
 
   function goNext() { if (currentPage < totalPages - 1) { setCurrentPage(p => p + 1); pageRef.current?.scrollTo(0, 0) } }
   function goPrev() { if (currentPage > 0) { setCurrentPage(p => p - 1); pageRef.current?.scrollTo(0, 0) } }
+  // Tikken in de linker- of rechterrand van de pagina bladert, zoals op een e-reader
+  function handlePageTap(e) {
+    if (window.getSelection()?.toString().trim()) return
+    if (e.target.closest('.inline-highlight, button, a')) return
+    const r = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width
+    if (x < 0.25) goPrev()
+    else if (x > 0.75) goNext()
+  }
   function handleTouchStart(e) { touchStartX.current = e.touches[0].clientX }
   function handleTouchEnd(e) {
     if (touchStartX.current === null) return
@@ -292,6 +437,7 @@ export default function App() {
       await saveBookText(session, text)
       setBookText(text)
       setBookDate(date)
+      anchorRef.current = { bi: 0, word: 0 }
       setCurrentPage(0)
       setSaving(false)
 
@@ -337,27 +483,22 @@ export default function App() {
 
   function handleSidebarClick(note) {
     if (note.type !== 'inline' || !note.quote) return
-    const notePos = note.pos !== undefined ? note.pos : bookText.indexOf(note.quote)
-    const allPages = paginateBlocks(parseBook(bookText))
+    const notePos = note.pos !== undefined && note.pos !== null && isFinite(note.pos) ? note.pos : bookText.indexOf(note.quote)
     let charCursor = 0, targetPage = 0
-    outer: for (let pi = 0; pi < allPages.length; pi++) {
-      for (const block of allPages[pi]) {
-        if (block.type === 'para' && block.text) {
-          const idx = bookText.indexOf(block.text, charCursor)
-          if (idx !== -1 && idx <= notePos && notePos <= idx + block.text.length) { targetPage = pi; break outer }
-          if (idx !== -1) charCursor = idx + block.text.length
+    for (let bi = 0; bi < blocks.length; bi++) {
+      const block = blocks[bi]
+      if (block.type === 'para' && block.text) {
+        const idx = bookText.indexOf(block.text, charCursor)
+        if (idx !== -1 && idx <= notePos && notePos <= idx + block.text.length) {
+          // woordpositie binnen de alinea → juiste pagina, ook als de alinea gesplitst is
+          const word = block.text.slice(0, notePos - idx).split(' ').length - 1
+          targetPage = findPage(pages, bi, word)
+          break
         }
+        if (idx !== -1) charCursor = idx + block.text.length
       }
     }
     setOverlayOpen(false); setCurrentPage(targetPage); setActiveNoteId(note.id)
-    setTimeout(() => {
-      const el = document.getElementById('h-' + note.id)
-      if (el && pageRef.current) {
-        const at = pageRef.current.getBoundingClientRect().top
-        const et = el.getBoundingClientRect().top
-        pageRef.current.scrollTo({ top: et - at + pageRef.current.scrollTop - 120, behavior: 'smooth' })
-      }
-    }, 150)
     setTimeout(() => setActiveNoteId(null), 2500)
   }
 
@@ -501,7 +642,7 @@ export default function App() {
       )}
 
       <div className="main">
-        <div className="reading-area" ref={pageRef} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} style={{ background: '#d4c9b0', padding: '32px 24px 16px' }}>
+        <div className="reading-area" ref={pageRef} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {!canView ? (
             <div className="locked-state">
               <div className="locked-icon">🔒</div>
@@ -509,10 +650,14 @@ export default function App() {
               <p>Femke heeft het lezen tijdelijk uitgeschakeld.</p>
             </div>
           ) : (
-            <div className="book-page">
-              {pages[currentPage]?.map((block, i) => (
-                <Block key={i} block={block} notes={notes} onHighlightClick={handleHighlightClick}/>
-              ))}
+            <div className="book-page" ref={bookPageRef} onClick={handlePageTap}>
+              <div className="page-measurer" ref={measurerRef} aria-hidden="true"/>
+              <div className="page-content" style={{ visibility: measuredPages ? 'visible' : 'hidden' }}>
+                {pages[currentPage]?.map((block, i) => (
+                  <Block key={currentPage + '-' + i} block={block} notes={notes} onHighlightClick={handleHighlightClick}/>
+                ))}
+              </div>
+              <div className="page-folio">{currentPage + 1}</div>
             </div>
           )}
         </div>
