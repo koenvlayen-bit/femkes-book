@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import mammoth from 'mammoth'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { fetchBook, saveBookText, saveNotes, seedNotes, setViewing, loadSession, saveSession, clearSession } from './api.js'
 import SEED_NOTES from './initialNotes.js'
 import BOOK_TEXT from './bookText.js'
@@ -15,32 +16,103 @@ const CREDS = {
 const READER_PIN = '6699'
 const PARAS_PER_PAGE = 8
 
-function parseBook(text) {
-  const lines = text.split('\n')
+// Vetdruk uit Word loopt vaak over regeleinden heen ("**tekst\nmeer**").
+// Herstel dat zodat elke regel zijn eigen, gebalanceerde ** markeringen heeft.
+function normalizeBold(text) {
+  let out = '', bold = false
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '*' && text[i + 1] === '*') { out += '**'; bold = !bold; i++; continue }
+    if (text[i] === '\n' && bold) { out += '**\n**'; continue }
+    out += text[i]
+  }
+  if (bold) out += '**'
+  return out.split('\n').map(l => l.replace(/\*\*(\s*)\*\*/g, '$1')).join('\n')
+}
+
+const plain = s => s.replace(/\*\*/g, '').trim()
+const isFullyBold = s => /^\*\*[^*]+\*\*$/.test(s.trim())
+const CHAPTER_RE = /^(Proloog|Epiloog|Notities|\d{1,2})\.?$/
+const MONTHS = '(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)'
+const STAMP_RE = new RegExp(`^([A-ZÀ-Ý][\\wà-ÿ]+,\\s*)?(\\d{1,2}\\s+${MONTHS}(\\s+\\d{4})?:?\\s*)?(\\d{1,2}[.:]\\d{2}(\\s*(uur|AM|PM))?)?$`, 'i')
+const isStamp = s => { const p = plain(s); return /\d/.test(p) && p.length < 45 && STAMP_RE.test(p) }
+const isChapter = s => CHAPTER_RE.test(plain(s))
+
+// Een krantenartikel = minstens 3 opeenvolgende volledig vetgedrukte regels (lege regels tussenin mogen)
+function articleRun(lines, i) {
+  const idx = []
+  let j = i
+  while (j < lines.length) {
+    const t = lines[j].trim()
+    if (!t) { j++; continue }
+    if (!isFullyBold(t) || isChapter(t) || isStamp(t)) break
+    idx.push(j); j++
+  }
+  return { idx, end: j }
+}
+
+function buildArticle(rawLines) {
+  let lines = rawLines.map(plain).filter(Boolean)
+  const head = { type: 'np-head', kicker: '', dateline: '', headline: '', deck: '', paper: '' }
+  const foot = { type: 'np-foot', byline: '' }
+  // Koptekst: "BREAKING NEWS PISKOPIANO" → label + plaatsnaam
+  const bm = lines[0]?.match(/^(BREAKING NEWS)\s*(.*)$/i)
+  if (bm) { head.kicker = bm[1].toUpperCase(); head.dateline = bm[2]; lines.shift() }
+  const isShort = (s, n) => s.length < n && !/[.!]$/.test(s)
+  if (lines[0] && isShort(lines[0], 100)) head.headline = lines.shift()
+  if (head.headline && lines[0] && /^[A-ZÀ-Ý\s-]{3,30}$/.test(lines[0])) head.dateline = lines.shift()
+  else if (head.headline && lines[0] && isShort(lines[0], 200) && !/—/.test(lines[0])) head.deck = lines.shift()
+  if (!head.dateline && lines[0] && /^[A-ZÀ-Ý\s-]{3,30}$/.test(lines[0])) head.dateline = lines.shift()
+  // Voettekst: "Auteur: …" en eventueel de krantennaam
+  const tail = []
+  while (lines.length > 1 && lines[lines.length - 1].length < 45 && !/[.!?]$/.test(lines[lines.length - 1])) tail.unshift(lines.pop())
+  if (tail.length) {
+    foot.byline = tail[0].replace(/^Auteur:\s*/i, '')
+    if (tail[1]) head.paper = tail.slice(1).join(' · ')
+  }
+  const out = [head]
+  lines.forEach((text, k) => out.push({ type: 'np-para', text, first: k === 0 }))
+  out.push(foot)
+  return out
+}
+
+function parseBook(rawText) {
+  const lines = normalizeBold(rawText).split('\n')
   const blocks = []
   let i = 0
   const syn = []
-  while (i < lines.length && !lines[i].startsWith('Proloog') && !lines[i].match(/^\d+[.\s]*$/)) {
-    if (lines[i].trim()) syn.push(lines[i].trim())
+  while (i < lines.length && !isChapter(lines[i].trim())) {
+    if (lines[i].trim()) syn.push(plain(lines[i]))
     i++
   }
   if (syn.length) blocks.push({ type: 'synopsis', text: syn.join(' ') })
   while (i < lines.length) {
     const t = lines[i].trim()
     if (!t) { i++; continue }
-    if (t.startsWith('**') || t.startsWith('BREAKING')) {
-      blocks.push({ type: 'breaking', text: t.replace(/\*\*/g, '') }); i++; continue
+    if (isChapter(t)) {
+      const raw = plain(t).replace('.', '')
+      const label = /^\d/.test(raw) ? 'Hoofdstuk ' + raw : raw
+      i++
+      // Datum/tijd onder de hoofdstuktitel (kan over meerdere regels staan)
+      const subs = []
+      let j = i
+      while (j < lines.length && subs.length < 3) {
+        const s = lines[j].trim()
+        if (!s) { j++; continue }
+        if (isStamp(s)) { subs.push(plain(s)); j++; i = j } else break
+      }
+      blocks.push({ type: 'chapter', label, sub: subs.join(' · ') }); continue
     }
-    const chapterMatch = t.match(/^\*{0,2}(Proloog|Epiloog|Notities|\d+\.?)\*{0,2}\.?\s*$/)
-    if (chapterMatch) {
-      const raw = chapterMatch[1].replace('.', '').trim()
-      const label = raw === 'Proloog' ? 'Proloog' : raw === 'Epiloog' ? 'Epiloog' : raw === 'Notities' ? 'Notities' : 'Hoofdstuk ' + raw
-      let sub = ''; i++
-      if (i < lines.length && lines[i].trim().match(/^\d+\s+\w+/)) { sub = lines[i].trim(); i++ }
-      blocks.push({ type: 'chapter', label, sub }); continue
+    if (isStamp(t)) {
+      const subs = [plain(t)]; i++
+      while (i < lines.length && lines[i].trim() && isStamp(lines[i])) subs.push(plain(lines[i++]))
+      blocks.push({ type: 'timestamp', text: subs.join(' · ') }); continue
     }
-    if (t.match(/^\d+\s+\w+(\s+\d{4})?\s+\d+[.:]/)) {
-      blocks.push({ type: 'timestamp', text: t }); i++; continue
+    if (isFullyBold(t)) {
+      const run = articleRun(lines, i)
+      if (run.idx.length >= 3) {
+        blocks.push(...buildArticle(run.idx.map(k => lines[k])))
+        i = run.end; continue
+      }
     }
     blocks.push({ type: 'para', text: t }); i++
   }
@@ -63,14 +135,9 @@ function paginateBlocks(blocks) {
 }
 
 // ── E-reader paginering: vult elke pagina exact tot de beschikbare hoogte ──
-const SPLITTABLE = new Set(['para', 'synopsis', 'breaking'])
+const SPLITTABLE = new Set(['para', 'synopsis', 'breaking', 'np-para'])
+const KEEP_WITH_NEXT = new Set(['np-head'])
 
-function escapeHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-function boldHtml(text) {
-  return escapeHtml(text).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-}
 function splitWords(words, k) {
   let a = words.slice(0, k).join(' ')
   let r = words.slice(k).join(' ')
@@ -78,23 +145,11 @@ function splitWords(words, k) {
   if (((a.match(/\*\*/g) || []).length) % 2 === 1) { a += '**'; r = '**' + r }
   return [a, r]
 }
+// Meet met exact dezelfde markup als op het scherm
 function measureEl(frag) {
-  let el
-  switch (frag.type) {
-    case 'synopsis': el = document.createElement('div'); el.className = 'book-synopsis'; el.textContent = frag.text; break
-    case 'chapter': {
-      el = document.createElement('div'); el.className = 'chapter-page'
-      el.innerHTML = `<div class="chapter-label">${escapeHtml(frag.label)}</div><div class="chapter-rule"></div>` +
-        (frag.sub ? `<div class="chapter-sub">${escapeHtml(frag.sub)}</div>` : '')
-      break
-    }
-    case 'timestamp': el = document.createElement('div'); el.className = 'chapter-sub'; el.style.textAlign = 'center'; el.textContent = frag.text; break
-    case 'breaking': el = document.createElement('div'); el.className = 'breaking-news'; el.textContent = frag.text; break
-    default: el = document.createElement('p'); el.className = 'book-para'; el.innerHTML = boldHtml(frag.text)
-  }
-  if (frag.split) el.classList.add('split')
-  if (frag.cont) el.classList.add('cont')
-  return el
+  const tpl = document.createElement('template')
+  tpl.innerHTML = renderToStaticMarkup(<Block block={frag} notes={[]} onHighlightClick={() => {}}/>)
+  return tpl.content.firstElementChild || document.createElement('div')
 }
 
 function paginateMeasured(blocks, measurer, maxH) {
@@ -106,13 +161,24 @@ function paginateMeasured(blocks, measurer, maxH) {
     const last = measurer.lastElementChild
     return !last || last.getBoundingClientRect().bottom - top() <= maxH
   }
-  const tryFrag = frag => { const el = measureEl(frag); measurer.appendChild(el); const ok = fits(); measurer.removeChild(el); return ok }
-  const place = frag => { measurer.appendChild(measureEl(frag)); cur.push(frag) }
+  // Artikelstuk bovenaan een pagina krijgt een "afgescheurde" bovenrand: meet die mee
+  const atTop = f => (!cur.length && (f.type === 'np-para' || f.type === 'np-foot')) ? { ...f, atTop: true } : f
+  const tryFrag = frag => { const el = measureEl(atTop(frag)); measurer.appendChild(el); const ok = fits(); measurer.removeChild(el); return ok }
+  const place = frag => { const f = atTop(frag); measurer.appendChild(measureEl(f)); cur.push(f) }
   const newPage = () => { if (cur.length) pages.push(cur); cur = []; measurer.innerHTML = '' }
 
   blocks.forEach((b, bi) => {
     if (b.type === 'chapter' && cur.length) newPage()
     const whole = { ...b, bi, fromWord: 0, toWord: Infinity }
+    if (KEEP_WITH_NEXT.has(b.type) && cur.length && blocks[bi + 1]) {
+      // Kop van een artikel niet alleen onderaan een pagina laten staan
+      const next = blocks[bi + 1]
+      const peek = { ...next, text: (next.text || '').split(' ').slice(0, 25).join(' '), split: true }
+      const h = measureEl(whole); measurer.appendChild(h)
+      const ok = tryFrag(peek)
+      measurer.removeChild(h)
+      if (!ok) newPage()
+    }
     if (tryFrag(whole)) { place(whole); return }
     if (!SPLITTABLE.has(b.type)) { newPage(); place(whole); return }
 
@@ -152,7 +218,7 @@ function findPage(pages, bi, word = 0) {
   return idx === -1 ? 0 : idx
 }
 
-function Block({ block, notes, onHighlightClick }) {
+function Block({ block, notes, onHighlightClick, edge = '' }) {
   const active = notes.filter(n => n.type === 'inline' && !n.resolved && n.quote)
   function renderBold(text, keyPrefix) {
     const parts = text.split(/(\*\*[^*]+\*\*)/)
@@ -176,7 +242,8 @@ function Block({ block, notes, onHighlightClick }) {
     if (cursor < content.length) parts.push(...renderBold(content.slice(cursor), 'rbe'))
     return parts
   }
-  const fragClass = (block.split ? ' split' : '') + (block.cont ? ' cont' : '')
+  const fragClass = (block.split ? ' split' : '') + (block.cont ? ' cont' : '') +
+    (block.split || edge.includes('end') ? ' edge-end' : '') + (block.cont || block.atTop || edge.includes('start') ? ' edge-start' : '')
   switch (block.type) {
     case 'synopsis': return <div className={'book-synopsis' + fragClass}>{block.text}</div>
     case 'chapter': return (
@@ -188,6 +255,23 @@ function Block({ block, notes, onHighlightClick }) {
     )
     case 'timestamp': return <div className="chapter-sub" style={{textAlign:'center'}}>{block.text}</div>
     case 'breaking': return <div className={'breaking-news' + fragClass}>{block.text}</div>
+    case 'np-head': return (
+      <div className="np-head">
+        {block.paper
+          ? <div className="np-paper">{block.paper}</div>
+          : <div className="np-rule"/>}
+        {(block.kicker || block.dateline) && (
+          <div className="np-meta">
+            {block.kicker && <span className="np-kicker">{block.kicker}</span>}
+            {block.dateline && <span className="np-dateline">{block.dateline}</span>}
+          </div>
+        )}
+        {block.headline && <div className="np-headline">{block.headline}</div>}
+        {block.deck && <div className="np-deck">{block.deck}</div>}
+      </div>
+    )
+    case 'np-para': return <p className={'np-para' + (block.first && !block.cont ? ' first' : '') + fragClass}>{wrapText(block.text)}</p>
+    case 'np-foot': return <div className={'np-foot' + (block.atTop || edge.includes('start') ? ' edge-start' : '')}>{block.byline && <>— {block.byline}</>}</div>
     case 'para': return <p className={'book-para' + fragClass}>{wrapText(block.text)}</p>
     default: return null
   }
@@ -483,19 +567,16 @@ export default function App() {
 
   function handleSidebarClick(note) {
     if (note.type !== 'inline' || !note.quote) return
-    const notePos = note.pos !== undefined && note.pos !== null && isFinite(note.pos) ? note.pos : bookText.indexOf(note.quote)
-    let charCursor = 0, targetPage = 0
+    let targetPage = 0
     for (let bi = 0; bi < blocks.length; bi++) {
-      const block = blocks[bi]
-      if (block.type === 'para' && block.text) {
-        const idx = bookText.indexOf(block.text, charCursor)
-        if (idx !== -1 && idx <= notePos && notePos <= idx + block.text.length) {
-          // woordpositie binnen de alinea → juiste pagina, ook als de alinea gesplitst is
-          const word = block.text.slice(0, notePos - idx).split(' ').length - 1
-          targetPage = findPage(pages, bi, word)
-          break
-        }
-        if (idx !== -1) charCursor = idx + block.text.length
+      const text = blocks[bi].text
+      if (!text) continue
+      const at = text.indexOf(note.quote)
+      if (at !== -1) {
+        // woordpositie binnen de alinea → juiste pagina, ook als de alinea gesplitst is
+        const word = text.slice(0, at).split(' ').length - 1
+        targetPage = findPage(pages, bi, word)
+        break
       }
     }
     setOverlayOpen(false); setCurrentPage(targetPage); setActiveNoteId(note.id)
@@ -653,9 +734,12 @@ export default function App() {
             <div className="book-page" ref={bookPageRef} onClick={handlePageTap}>
               <div className="page-measurer" ref={measurerRef} aria-hidden="true"/>
               <div className="page-content" style={{ visibility: measuredPages ? 'visible' : 'hidden' }}>
-                {pages[currentPage]?.map((block, i) => (
-                  <Block key={currentPage + '-' + i} block={block} notes={notes} onHighlightClick={handleHighlightClick}/>
-                ))}
+                {pages[currentPage]?.map((block, i, arr) => {
+                  // Artikel loopt door over de paginagrens → "afgescheurde" rand tonen
+                  const inArticle = block.type === 'np-para' || block.type === 'np-foot'
+                  const edge = (inArticle && i === 0 ? 'start ' : '') + (block.type === 'np-para' && i === arr.length - 1 ? 'end' : '')
+                  return <Block key={currentPage + '-' + i} block={block} edge={edge} notes={notes} onHighlightClick={handleHighlightClick}/>
+                })}
               </div>
               <div className="page-folio">{currentPage + 1}</div>
             </div>
