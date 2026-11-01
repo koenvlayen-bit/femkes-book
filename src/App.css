@@ -148,3 +148,28 @@ body{font-family:'Inter',sans-serif;background:#d4c9b0}
   .editor-sidebar{display:none}
   .book-label,.topbar-divider{display:none}
 }
+
+/* Krantenartikel */
+.np-head{background:#f2eee4;border:1px solid #d8cfbd;border-bottom:none;border-radius:3px 3px 0 0;padding:16px 24px 12px;margin-top:10px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+.np-paper{font-family:'Playfair Display',serif;font-weight:700;font-size:1.35rem;letter-spacing:4px;text-transform:uppercase;text-align:center;color:#1a1510;border-top:3px double #2a2420;border-bottom:1px solid #2a2420;padding:6px 0 5px;margin-bottom:12px}
+.np-rule{border-top:3px double #2a2420;margin-bottom:12px}
+.np-meta{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.np-kicker{font-family:'Inter',sans-serif;font-size:.64rem;font-weight:700;letter-spacing:1.5px;color:#fff;background:#b3261e;padding:3px 7px;border-radius:2px}
+.np-dateline{font-family:'Inter',sans-serif;font-size:.66rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6f6252}
+.np-headline{font-family:'Playfair Display',serif;font-weight:700;font-size:1.5rem;line-height:1.18;color:#1a1510;margin-bottom:8px;letter-spacing:-.2px}
+.np-deck{font-family:'Lora',serif;font-style:italic;font-size:.97rem;line-height:1.5;color:#4a4035;padding-bottom:10px;border-bottom:1px solid #d8cfbd}
+.np-para{background:#f2eee4;border-left:1px solid #d8cfbd;border-right:1px solid #d8cfbd;padding:0 24px .75em;font-family:'Lora',serif;font-size:.93rem;line-height:1.68;color:#2a241e;text-align:justify;hyphens:auto}
+.np-para.first{padding-top:4px}
+.np-para.first::first-letter{float:left;font-family:'Playfair Display',serif;font-weight:700;font-size:3.2em;line-height:.82;padding:6px 7px 0 0;color:#1a1510}
+.np-para.split{text-align-last:justify}
+.np-para.edge-end{border-bottom:1px dashed #cbbfa8;padding-bottom:.6em}
+.np-para.edge-start{border-top:1px dashed #cbbfa8;padding-top:.6em}
+.np-foot{background:#f2eee4;border:1px solid #d8cfbd;border-top:none;border-radius:0 0 3px 3px;padding:4px 24px 14px;margin-bottom:30px;text-align:right;font-family:'Lora',serif;font-style:italic;font-size:.84rem;color:#6a5e50}
+@media(max-width:900px){
+  .np-head{padding:14px 16px 10px}
+  .np-para{padding:0 16px .7em;font-size:.9rem}
+  .np-foot{padding:4px 16px 12px}
+  .np-headline{font-size:1.28rem}
+  .np-paper{font-size:1.1rem;letter-spacing:3px}
+}
+.np-foot.edge-start{border-top:1px dashed #cbbfa8;padding-top:10px}
